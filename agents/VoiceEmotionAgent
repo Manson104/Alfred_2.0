@@ -1,0 +1,120 @@
+import os
+import time
+import wave
+import numpy as np
+import pyttsx3
+import logging
+from voice_recognition_module import AudioRecorder, SpeechRecognizer  # Assure-toi que ce module est accessible
+
+# Configurer le logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("AlfredEmotionInteraction")
+
+class EmotionAnalyzer:
+    """
+    Analyse l'émotion à partir d'un signal audio.
+    Ici, une implémentation simple basée sur l'énergie RMS du signal.
+    """
+    def analyze(self, audio_path: str) -> str:
+        try:
+            with wave.open(audio_path, 'rb') as wf:
+                frames = wf.readframes(wf.getnframes())
+                audio_signal = np.frombuffer(frames, dtype=np.int16)
+                rms = np.sqrt(np.mean(np.square(audio_signal)))
+                # Seuils arbitraires pour détecter l'émotion
+                if rms > 1500:
+                    emotion = "colère"    # Volume très élevé
+                elif rms < 500:
+                    emotion = "tristesse"  # Volume faible
+                else:
+                    emotion = "neutre"
+                logger.info(f"Analyse d'émotion: RMS={rms:.2f}, émotion détectée: {emotion}")
+                return emotion
+        except Exception as e:
+            logger.error(f"Erreur dans l'analyse d'émotion: {e}")
+            return "neutre"
+
+class TTSEngine:
+    """
+    Synthèse vocale avec pyttsx3, capable d'ajuster le débit et le volume selon l'émotion détectée.
+    (Note : pyttsx3 ne permet pas de régler le pitch de manière universelle, mais certains réglages de voix peuvent être disponibles.)
+    """
+    def __init__(self):
+        self.engine = pyttsx3.init()
+    
+    def set_voice_parameters(self, emotion: str):
+        if emotion == "colère":
+            rate = 150
+            volume = 0.9
+        elif emotion == "tristesse":
+            rate = 120
+            volume = 0.7
+        elif emotion == "neutre":
+            rate = 140
+            volume = 0.8
+        else:
+            rate = 140
+            volume = 0.8
+        
+        self.engine.setProperty('rate', rate)
+        self.engine.setProperty('volume', volume)
+        logger.info(f"TTS paramètres: rate={rate}, volume={volume}")
+    
+    def speak(self, text: str, emotion: str = "neutre"):
+        self.set_voice_parameters(emotion)
+        self.engine.say(text)
+        self.engine.runAndWait()
+
+def main():
+    # Initialiser les composants
+    recorder = AudioRecorder()
+    # Choix du moteur de reconnaissance : ici, on utilise Whisper pour sa précision
+    recognizer = SpeechRecognizer(whisper_model_size="base", vosk_model_path="models/vosk-model-small-fr")
+    emotion_analyzer = EmotionAnalyzer()
+    tts = TTSEngine()
+    
+    logger.info("Veuillez parler. L'enregistrement commencera maintenant...")
+    recorder.start_recording(silence_detection=True)
+    while recorder.is_recording:
+        time.sleep(0.1)
+    
+    # Sauvegarder l'enregistrement dans un fichier temporaire
+    temp_audio_path = "temp_command.wav"
+    with wave.open(temp_audio_path, 'wb') as wf:
+        wf.setnchannels(recorder.channels)
+        wf.setsampwidth(2)  # 16-bit
+        wf.setframerate(recorder.sample_rate)
+        wf.writeframes(b''.join(recorder.frames))
+    
+    # Reconnaissance vocale (ici, via Whisper)
+    text, confidence = recognizer._recognize_with_whisper_from_file(temp_audio_path)
+    logger.info(f"Texte reconnu: '{text}' (confiance: {confidence:.2f})")
+    
+    # Analyse d'émotion sur le fichier audio
+    emotion = emotion_analyzer.analyze(temp_audio_path)
+    
+    # Générer une réponse (pour cet exemple, une réponse simulée)
+    if "salut" in text.lower():
+        response = "Bonjour, comment puis-je vous aider aujourd'hui ?"
+    else:
+        response = f"Vous avez dit : {text}. Je vais traiter votre demande."
+    
+    # Adapter la réponse selon l'émotion détectée
+    if emotion == "colère":
+        response += " Je comprends votre frustration, je vais essayer de calmer la situation."
+    elif emotion == "tristesse":
+        response += " Je suis désolé de vous entendre ainsi, dites-moi comment je peux vous aider."
+    else:
+        response += " Merci pour votre commande."
+    
+    logger.info(f"Réponse générée: {response}")
+    
+    # Synthèse vocale avec adaptation du ton
+    tts.speak(response, emotion)
+    
+    # Nettoyage du fichier temporaire
+    if os.path.exists(temp_audio_path):
+        os.remove(temp_audio_path)
+
+if __name__ == "__main__":
+    main()
