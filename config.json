@@ -1,0 +1,72 @@
+{
+  "name": "Alfred",
+  "version": "0.1.0",
+  "github_org": "alfred-project",
+  "base_path": "~/.alfred",
+  "sync_time": "03:00",
+  "startup_modules": [
+    "context_manager",
+    "ai_router"
+  ],
+  "log_level": "INFO",
+
+  "logging": {
+    "log_level": "INFO",
+    "log_dir": "~/.alfred/logs",
+    "console_output": true,
+    "max_file_size": 10485760,
+    "backup_count": 5,
+    "module_levels": {
+      "core.Alfred": "INFO",
+      "core.MessageBus": "INFO",
+      "ai.AIRouter": "DEBUG",
+      "providers": "INFO",
+      "ModuleManager": "INFO"
+    }
+  },
+
+  "ai_providers": {
+    "enabled_providers": ["perplexity_hub"],
+    "default_provider": "perplexity_hub",
+    "ai_router_strategy": "smart",
+
+    "perplexity_hub": {
+      "api_key": "YOUR_PERPLEXITY_API_KEY_HERE",
+      "subscription_level": "pro",
+      "default_model": "claude-3-7-sonnet",
+      "available_models": [
+        "claude-3-7-sonnet",
+        "claude-3-5-sonnet",
+        "claude-3-opus",
+        "gpt-4o",
+        "pplx-70b-online"
+      ],
+      "system_prompt": "Vous êtes Alfred, un assistant personnel intelligent. Vous êtes serviable, précis et personnalisé pour votre utilisateur. Vous répondez en français sauf si explicitement demandé autrement."
+    },
+
+    "openai": {
+      "enabled": false,
+      "api_key": "",
+      "default_model": "gpt-4o"
+    },
+
+    "anthropic": {
+      "enabled": false,
+      "api_key": "",
+      "default_model": "claude-3-5-sonnet-20240620"
+    }
+  },
+
+  "user_preferences": {
+    "default_language": "fr",
+    "interaction_mode": "conversational",
+    "voice_enabled": false,
+    "preferred_model_family": "claude"
+  },
+
+  "modules": {
+    "nightly_sync_enabled": true,
+    "fallback_enabled": true,
+    "max_backups": 7
+  }
+}
